@@ -1,5 +1,7 @@
 # Real-Time Motorcycle Accident Detection and Telegram Notification System with Low-Light Enhancement and ByteTrack
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tormisster/accident-detection/blob/main/Accident_Detection_Colab.ipynb)
+
 ระบบตรวจจับอุบัติเหตุรถจักรยานยนต์แบบเรียลไทม์และแจ้งเตือนผ่าน Telegram ร่วมกับการปรับปรุงภาพแสงน้อย (CIE LAB + Adaptive Gamma + CLAHE) และการติดตามวัตถุด้วย ByteTrack
 
 ## สถาปัตยกรรมระบบ (System Architecture)
