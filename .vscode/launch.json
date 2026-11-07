@@ -2,15 +2,25 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "0. Setup & Connect Telegram Bot (เชื่อมต่อบอท Telegram อัตโนมัติ)",
+            "name": "1. Run Accident Detection (Jump to Crash Scene -> แจ้งเตือน Telegram ทันที)",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/setup_telegram.py",
+            "program": "${workspaceFolder}/inference.py",
+            "args": [
+                "--config",
+                "config.yaml",
+                "--source",
+                "ภาพคลิปอุบัติเหตุ จากกล้องวงจรปิด สี่แยก บ่อขิง ม.7 ต.หน้าพระธาตุ อ.พนัสนิคม ชลบุรี.mp4",
+                "--start-frame",
+                "1180",
+                "--output",
+                "logs/output_crash_scene.mp4"
+            ],
             "console": "integratedTerminal",
             "justMyCode": true
         },
         {
-            "name": "1. Run Accident Detection on CCTV Video (คลิปสี่แยกบ่อขิง)",
+            "name": "2. Run Accident Detection on Full CCTV Video (ตั้งแต่ต้นคลิป)",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/inference.py",
@@ -21,24 +31,6 @@
                 "ภาพคลิปอุบัติเหตุ จากกล้องวงจรปิด สี่แยก บ่อขิง ม.7 ต.หน้าพระธาตุ อ.พนัสนิคม ชลบุรี.mp4",
                 "--output",
                 "logs/output_accident_detection.mp4"
-            ],
-            "console": "integratedTerminal",
-            "justMyCode": true
-        },
-        {
-            "name": "2. Run Accident Detection (Jump to Crash Scene @ 38s)",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/inference.py",
-            "args": [
-                "--config",
-                "config.yaml",
-                "--source",
-                "ภาพคลิปอุบัติเหตุ จากกล้องวงจรปิด สี่แยก บ่อขิง ม.7 ต.หน้าพระธาตุ อ.พนัสนิคม ชลบุรี.mp4",
-                "--start-frame",
-                "1145",
-                "--output",
-                "logs/output_crash_scene.mp4"
             ],
             "console": "integratedTerminal",
             "justMyCode": true

