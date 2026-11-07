@@ -1,37 +1,32 @@
-# Real-Time Motorcycle Accident Detection and Notification Configuration
-
 model:
-  weights: "yolo11x.pt"  # Path to YOLO weights (e.g., yolo11x.pt or runs/detect/train/weights/best.pt)
-  conf_threshold: 0.50
+  weights: yolo11x.pt
+  conf_threshold: 0.5
   iou_threshold: 0.45
-  tracker: "bytetrack.yaml"
-  device: "0"            # "0" for CUDA GPU, "mps" for Apple Silicon, or "cpu"
-
+  tracker: bytetrack.yaml
+  device: '0'
 classes:
-  0: "person_accident"
-  1: "motorcycle_accident"
-
+  0: person_accident
+  1: motorcycle_accident
 preprocessing:
   enable_low_light_enhancement: true
-  low_light_threshold: 90.0  # Mean L-channel intensity threshold (0-255) in CIE LAB space
+  low_light_threshold: 90.0
   clahe_clip_limit: 2.5
-  clahe_tile_grid_size: [8, 8]
+  clahe_tile_grid_size:
+  - 8
+  - 8
   target_illumination: 128.0
-
 temporal_confirmation:
-  confirmation_frames: 5     # Consecutive/windowed frames required to confirm an accident
-  max_missing_frames: 3      # Grace period before resetting unconfirmed track history
-  cooldown_seconds: 60.0     # Minimum seconds between consecutive Telegram alerts
-
+  confirmation_frames: 5
+  max_missing_frames: 3
+  cooldown_seconds: 60.0
 telegram:
   enabled: true
-  bot_token: "YOUR_TELEGRAM_BOT_TOKEN"
-  chat_id: "YOUR_TELEGRAM_CHAT_ID"
+  bot_token: 9233730263:AAEkjMzC-pK2PO7ekTGgN4rmVYtqK3hHqHo
+  chat_id: '6819938549'
   timeout_seconds: 10.0
-
 logging:
-  log_dir: "logs"
-  events_csv: "logs/accident_events.csv"
-  metrics_csv: "logs/runtime_metrics.csv"
+  log_dir: logs
+  events_csv: logs/accident_events.csv
+  metrics_csv: logs/runtime_metrics.csv
   save_snapshots: true
-  snapshots_dir: "logs/snapshots"
+  snapshots_dir: logs/snapshots

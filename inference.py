@@ -623,6 +623,7 @@ class AccidentDetectionPipeline:
                 writer.release()
             if display:
                 cv2.destroyAllWindows()
+            self.notifier.flush(timeout=10.0)
 
         summary = self.csv_logger.get_summary_statistics()
         logger.info(

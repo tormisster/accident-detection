@@ -2,6 +2,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "0. Setup & Connect Telegram Bot (เชื่อมต่อบอท Telegram อัตโนมัติ)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/setup_telegram.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "name": "1. Run Accident Detection on CCTV Video (คลิปสี่แยกบ่อขิง)",
             "type": "debugpy",
             "request": "launch",

@@ -38,6 +38,7 @@ class TelegramNotifier:
         self.enabled = enabled
         self.timeout_seconds = float(timeout_seconds)
         self.api_url = f"https://api.telegram.org/bot{self.bot_token}/sendPhoto"
+        self._active_threads: list[threading.Thread] = []
 
     @property
     def is_configured(self) -> bool:
@@ -171,4 +172,13 @@ class TelegramNotifier:
             name="TelegramNotifierWorker",
         )
         worker_thread.start()
+        self._active_threads = [t for t in self._active_threads if t.is_alive()]
+        self._active_threads.append(worker_thread)
         return worker_thread
+
+    def flush(self, timeout: float = 10.0) -> None:
+        """Wait for any in-flight asynchronous Telegram alert threads to finish."""
+        for t in list(self._active_threads):
+            if t.is_alive():
+                t.join(timeout=timeout)
+        self._active_threads.clear()
