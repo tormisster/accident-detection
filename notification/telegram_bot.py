@@ -1,6 +1,6 @@
 """Asynchronous Telegram Bot notification module for real-time accident alerts.
 
-Supports automatic multi-recipient & group broadcasting:
+Supports automatic multi-recipient & group broadcasting in parallel:
 Anyone who opens https://t.me/Accident_accident_bot and presses 'START', or any
 Telegram Group/Channel where the bot is added, will automatically receive alerts.
 """
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class TelegramNotifier:
-    """Dispatches non-blocking Telegram photo alerts to all subscribed chats/groups."""
+    """Dispatches non-blocking Telegram photo alerts to all subscribed chats/groups concurrently."""
 
     DEFAULT_BOT_TOKEN: str = "9233730263:AAEkjMzC-pK2PO7ekTGgN4rmVYtqK3hHqHo"
     DEFAULT_CHAT_IDS: Tuple[str, ...] = ("6819938549", "9191991912", "-5505596792")
@@ -31,7 +31,7 @@ class TelegramNotifier:
         bot_token: str,
         chat_id: str | List[str],
         enabled: bool = True,
-        timeout_seconds: float = 10.0,
+        timeout_seconds: float = 20.0,
         auto_discover_subscribers: bool = True,
     ) -> None:
         """Initialize the TelegramNotifier."""
@@ -40,7 +40,7 @@ class TelegramNotifier:
             clean_token = self.DEFAULT_BOT_TOKEN
         self.bot_token = clean_token
         self.enabled = enabled
-        self.timeout_seconds = float(timeout_seconds)
+        self.timeout_seconds = max(15.0, float(timeout_seconds))
         self.auto_discover_subscribers = auto_discover_subscribers
 
         self.subscribers: Set[str] = set(self.DEFAULT_CHAT_IDS)
@@ -74,7 +74,7 @@ class TelegramNotifier:
         if not self.auto_discover_subscribers or not self.bot_token:
             return self.subscribers
         try:
-            resp = requests.get(self.get_updates_url, timeout=5.0)
+            resp = requests.get(self.get_updates_url, timeout=4.0)
             data = resp.json()
             if data.get("ok") and data.get("result"):
                 for update in data["result"]:
@@ -115,12 +115,43 @@ class TelegramNotifier:
             lines.append(f"📍 <b>Source:</b> <code>{html.escape(location_tag)}</code>")
         return "\n".join(lines)
 
+    def _send_single_recipient(
+        self,
+        cid: str,
+        image_bytes: bytes,
+        caption: str,
+    ) -> None:
+        """Send the photo alert to a single Telegram chat_id."""
+        files = {
+            "photo": ("accident_snapshot.jpg", image_bytes, "image/jpeg"),
+        }
+        data = {
+            "chat_id": cid,
+            "caption": caption,
+            "parse_mode": "HTML",
+        }
+        try:
+            response = requests.post(
+                self.send_photo_url,
+                data=data,
+                files=files,
+                timeout=self.timeout_seconds,
+            )
+            response.raise_for_status()
+            logger.info(
+                "Telegram alert dispatched to chat_id=%s (HTTP %d).",
+                cid,
+                response.status_code,
+            )
+        except requests.RequestException as exc:
+            logger.error("Failed to send Telegram alert to chat_id=%s: %s", cid, exc)
+
     def _send_photo_worker(
         self,
         image_bytes: bytes,
         caption: str,
     ) -> None:
-        """Worker executed in a background thread to broadcast the alert to all subscribers."""
+        """Broadcast the alert to all subscribers in parallel threads."""
         if not self.is_configured:
             logger.warning(
                 "TelegramNotifier triggered, but credentials are not configured. "
@@ -128,35 +159,24 @@ class TelegramNotifier:
             )
             return
 
-        target_chat_ids = set(self.refresh_subscribers())
+        target_chat_ids = sorted(self.refresh_subscribers())
         if not target_chat_ids:
             logger.warning("No Telegram subscribers found yet. Press START in the bot first.")
             return
 
+        sub_threads: List[threading.Thread] = []
         for cid in target_chat_ids:
-            files = {
-                "photo": ("accident_snapshot.jpg", image_bytes, "image/jpeg"),
-            }
-            data = {
-                "chat_id": cid,
-                "caption": caption,
-                "parse_mode": "HTML",
-            }
-            try:
-                response = requests.post(
-                    self.send_photo_url,
-                    data=data,
-                    files=files,
-                    timeout=self.timeout_seconds,
-                )
-                response.raise_for_status()
-                logger.info(
-                    "Telegram alert dispatched to chat_id=%s (HTTP %d).",
-                    cid,
-                    response.status_code,
-                )
-            except requests.RequestException as exc:
-                logger.error("Failed to send Telegram alert to chat_id=%s: %s", cid, exc)
+            t = threading.Thread(
+                target=self._send_single_recipient,
+                args=(cid, image_bytes, caption),
+                daemon=False,
+                name=f"TelegramSend-{cid}",
+            )
+            t.start()
+            sub_threads.append(t)
+
+        for t in sub_threads:
+            t.join(timeout=self.timeout_seconds + 5.0)
 
     def send_accident_alert(
         self,
@@ -168,7 +188,7 @@ class TelegramNotifier:
         low_light_active: bool = False,
         location_tag: Optional[str] = None,
     ) -> Optional[threading.Thread]:
-        """Encode the annotated frame and asynchronously send a Telegram photo alert."""
+        """Encode the annotated frame and asynchronously broadcast a Telegram photo alert."""
         if timestamp is None:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -191,7 +211,7 @@ class TelegramNotifier:
         worker_thread = threading.Thread(
             target=self._send_photo_worker,
             args=(encoded_img.tobytes(), caption),
-            daemon=True,
+            daemon=False,
             name="TelegramNotifierWorker",
         )
         worker_thread.start()
@@ -199,7 +219,7 @@ class TelegramNotifier:
         self._active_threads.append(worker_thread)
         return worker_thread
 
-    def flush(self, timeout: float = 10.0) -> None:
+    def flush(self, timeout: float = 30.0) -> None:
         """Wait for any in-flight asynchronous Telegram alert threads to finish."""
         for t in list(self._active_threads):
             if t.is_alive():
