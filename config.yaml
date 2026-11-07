@@ -22,7 +22,7 @@ temporal_confirmation:
 telegram:
   enabled: true
   bot_token: 9233730263:AAEkjMzC-pK2PO7ekTGgN4rmVYtqK3hHqHo
-  chat_id: '6819938549'
+  chat_id: '6819938549,9191991912,-5505596792'
   timeout_seconds: 10.0
 logging:
   log_dir: logs
