@@ -7,9 +7,10 @@ Telegram Group/Channel where the bot is added, will automatically receive alerts
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import html
 import logging
+from pathlib import Path
 import threading
 from typing import List, Optional, Set, Tuple
 
@@ -18,6 +19,28 @@ import numpy as np
 import requests
 
 logger = logging.getLogger(__name__)
+
+THAILAND_TZ = timezone(timedelta(hours=7))
+
+
+def now_thailand_str() -> str:
+    """Return current date and time in Thailand timezone (UTC+7) formatted as YYYY-MM-DD HH:MM:SS."""
+    return datetime.now(THAILAND_TZ).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def format_location_name(raw_location: Optional[str]) -> str:
+    """Clean up video filenames into a clean Location string."""
+    if not raw_location or raw_location == "0":
+        return "กล้องวงจรปิดจุดตรวจจับ (Live Camera)"
+    name = Path(raw_location).stem
+    for prefix in (
+        "ภาพคลิปอุบัติเหตุ จากกล้องวงจรปิด",
+        "ภาพคลิปอุบัติเหตุจากกล้องวงจรปิด",
+        "คลิปอุบัติเหตุ",
+    ):
+        if name.startswith(prefix):
+            name = name[len(prefix) :].strip()
+    return name or raw_location
 
 
 class TelegramNotifier:
@@ -101,7 +124,9 @@ class TelegramNotifier:
         location_tag: Optional[str] = None,
     ) -> str:
         """Format the alert metadata into an HTML caption for Telegram."""
+        del low_light_active  # Do not display Low-Light Enhancement line per user specification
         safe_ts = html.escape(timestamp)
+        clean_location = format_location_name(location_tag)
         lines = [
             "🚨 <b>MOTORCYCLE ACCIDENT DETECTED</b> 🚨",
             "",
@@ -109,10 +134,8 @@ class TelegramNotifier:
             f"🏍️ <b>Accident Motorcycles:</b> <code>{num_motorcycles}</code>",
             f"🤕 <b>Injured Persons:</b> <code>{num_persons}</code>",
             f"🎯 <b>Confidence Score:</b> <code>{max_confidence * 100:.1f}% ({max_confidence:.3f})</code>",
-            f"🌙 <b>Low-Light Enhancement:</b> <code>{'Active' if low_light_active else 'Bypassed'}</code>",
+            f"📍 <b>Location:</b> <code>{html.escape(clean_location)}</code>",
         ]
-        if location_tag:
-            lines.append(f"📍 <b>Source:</b> <code>{html.escape(location_tag)}</code>")
         return "\n".join(lines)
 
     def _send_single_recipient(
@@ -190,7 +213,7 @@ class TelegramNotifier:
     ) -> Optional[threading.Thread]:
         """Encode the annotated frame and asynchronously broadcast a Telegram photo alert."""
         if timestamp is None:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            timestamp = now_thailand_str()
 
         success, encoded_img = cv2.imencode(
             ".jpg", frame_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 92]

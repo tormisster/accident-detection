@@ -31,7 +31,7 @@ try:
 except ImportError:  # pragma: no cover
     YOLO = None  # type: ignore[assignment]
 
-from notification.telegram_bot import TelegramNotifier
+from notification.telegram_bot import TelegramNotifier, now_thailand_str
 from preprocessing.low_light import AdaptiveLowLightEnhancer
 from utils.logger import ResearchCSVLogger
 from utils.visualizer import AccidentVisualizer, DetectionBox
@@ -368,13 +368,13 @@ class AccidentDetectionPipeline:
                 and (frame_idx - self._accident_track_memory.get(m_tid, -9999)) <= 60
             )
             near_accident_person = any(
-                self._overlap_over_min_area(m_box, ap_box, pad=45) >= 0.02
+                self._overlap_over_min_area(m_box, ap_box, pad=80) >= 0.01
                 for ap_box in accident_person_boxes
             )
             collides_during_crash = (
                 (frame_idx - self._last_collision_frame <= 35)
                 and any(
-                    self._overlap_over_min_area(m_box, v_box, pad=30) >= 0.02
+                    self._overlap_over_min_area(m_box, v_box, pad=60) >= 0.01
                     for v_box, _, _, _ in vehicles
                 )
             )
@@ -476,9 +476,7 @@ class AccidentDetectionPipeline:
         )
 
         # Step 5: Log Metrics & Dispatch Asynchronous Alert if Triggered
-        timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        if video_timestamp_sec is not None:
-            timestamp_str = f"{timestamp_str} (Video t={video_timestamp_sec:.1f}s)"
+        timestamp_str = now_thailand_str()
 
         self.csv_logger.log_frame_metrics(
             frame_idx=frame_idx,
