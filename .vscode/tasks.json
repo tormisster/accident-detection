@@ -1,0 +1,28 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "1. Create Virtual Environment (.venv) & Install Requirements",
+            "type": "shell",
+            "command": "python3 -m venv .venv && ./.venv/bin/pip install --upgrade pip && ./.venv/bin/pip install -r requirements.txt",
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "2. Run Ablation Study Evaluation",
+            "type": "shell",
+            "command": "python3 evaluate_ablation.py --config config.yaml --output-csv logs/ablation_results.csv --synthetic",
+            "problemMatcher": [],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "3. Run Real-Time Inference (Webcam)",
+            "type": "shell",
+            "command": "python3 inference.py --config config.yaml --source 0",
+            "problemMatcher": []
+        }
+    ]
+}

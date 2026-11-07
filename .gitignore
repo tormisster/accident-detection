@@ -1,0 +1,25 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Large model weights & raw videos (>100MB GitHub limit)
+*.pt
+*.onnx
+*.engine
+*.mp4
+*.avi
+*.mov
+
+# Keep sample snapshot & ablation CSV, ignore temporary runtime videos
+logs/*.mp4
+
+# macOS system files
+.DS_Store
+._*

@@ -1,0 +1,54 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "1. Run Accident Detection on CCTV Video (คลิปสี่แยกบ่อขิง)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/inference.py",
+            "args": [
+                "--config",
+                "config.yaml",
+                "--source",
+                "ภาพคลิปอุบัติเหตุ จากกล้องวงจรปิด สี่แยก บ่อขิง ม.7 ต.หน้าพระธาตุ อ.พนัสนิคม ชลบุรี.mp4",
+                "--output",
+                "logs/output_accident_detection.mp4"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "2. Run Accident Detection (Jump to Crash Scene @ 38s)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/inference.py",
+            "args": [
+                "--config",
+                "config.yaml",
+                "--source",
+                "ภาพคลิปอุบัติเหตุ จากกล้องวงจรปิด สี่แยก บ่อขิง ม.7 ต.หน้าพระธาตุ อ.พนัสนิคม ชลบุรี.mp4",
+                "--start-frame",
+                "1145",
+                "--output",
+                "logs/output_crash_scene.mp4"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "3. Run Ablation Study Evaluation",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/evaluate_ablation.py",
+            "args": [
+                "--config",
+                "config.yaml",
+                "--output-csv",
+                "logs/ablation_results.csv",
+                "--synthetic"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}

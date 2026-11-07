@@ -1,0 +1,5 @@
+Variant,Frames,Preprocess_ms,Inference_Track_ms,Total_Latency_ms,P95_Latency_ms,FPS,Mean_L_Before,Mean_L_After,RMS_Contrast_Gain_Pct,Raw_Positive_Frames,Confirmed_Frames,False_Alarm_Suppression_Pct
+1. Baseline (YOLO11 Only),90,0.000,0.001,1.940,1.362,515.55,48.26,48.26,0.00,22,22,0.0
+2. YOLO11 + Low-Light (LAB+Gamma+CLAHE),90,1.514,0.001,2.832,2.890,353.10,48.26,134.70,186.21,30,30,0.0
+3. YOLO11 + ByteTrack + 5-Frame Confirm,90,0.000,0.000,1.309,1.340,764.23,48.26,48.26,0.00,22,14,100.0
+4. Proposed Full (Low-Light + ByteTrack + Confirm),90,1.505,0.001,2.813,2.876,355.53,48.26,134.70,186.21,30,22,100.0

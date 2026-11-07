@@ -1,0 +1,7 @@
+timestamp,frame_idx,num_motorcycle_accident,num_person_accident,max_confidence,mean_confidence,track_ids,mean_l_illumination,low_light_enhanced,fps,total_latency_ms,telegram_dispatched,snapshot_path
+2026-11-07 09:49:45,5,0,1,0.9562,0.9562,2,179.97,0,9.24,108.170,0,logs/snapshots/accident_frame_5_20261107_094945_157773.jpg
+2026-11-07 10:13:29 (Video t=40.5s),1215,0,1,0.7662,0.7662,6,136.14,0,7.61,131.363,0,logs/snapshots/accident_frame_1215_20261107_101329_256119.jpg
+2026-11-07 10:14:49 (Video t=40.5s),1215,1,1,0.7662,0.7532,6;7,136.14,0,8.87,112.701,0,logs/snapshots/accident_frame_1215_20261107_101449_333102.jpg
+2026-11-07 10:21:03 (Video t=40.5s),1215,1,1,0.7662,0.7532,6;7,136.14,0,10.18,98.221,0,logs/snapshots/accident_frame_1215_20261107_102103_771596.jpg
+2026-11-07 10:22:05 (Video t=0.2s),5,1,0,0.7334,0.7334,2,147.11,0,8.39,119.130,0,logs/snapshots/accident_frame_5_20261107_102205_640672.jpg
+2026-11-07 10:24:05 (Video t=0.2s),5,1,0,0.7334,0.7334,2,147.11,0,8.64,115.706,0,logs/snapshots/accident_frame_5_20261107_102405_009132.jpg
