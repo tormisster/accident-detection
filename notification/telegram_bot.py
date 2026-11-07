@@ -1,4 +1,9 @@
-"""Asynchronous Telegram Bot notification module for real-time accident alerts."""
+"""Asynchronous Telegram Bot notification module for real-time accident alerts.
+
+Supports automatic multi-recipient & group broadcasting:
+Anyone who opens https://t.me/Accident_accident_bot and presses 'START', or any
+Telegram Group/Channel where the bot is added, will automatically receive alerts.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +11,7 @@ from datetime import datetime
 import html
 import logging
 import threading
-from typing import Optional
+from typing import List, Optional, Set
 
 import cv2
 import numpy as np
@@ -16,29 +21,46 @@ logger = logging.getLogger(__name__)
 
 
 class TelegramNotifier:
-    """Dispatches non-blocking Telegram photo alerts using background daemon threads."""
+    """Dispatches non-blocking Telegram photo alerts to all subscribed chats/groups."""
 
     def __init__(
         self,
         bot_token: str,
-        chat_id: str,
+        chat_id: str | List[str],
         enabled: bool = True,
         timeout_seconds: float = 10.0,
+        auto_discover_subscribers: bool = True,
     ) -> None:
         """Initialize the TelegramNotifier.
 
         Args:
             bot_token: Telegram Bot API token obtained from @BotFather.
-            chat_id: Target Telegram user, group, or channel chat ID.
+            chat_id: Primary Telegram user/group chat ID (or comma-separated/list of IDs).
             enabled: Master switch to enable/disable network dispatch.
             timeout_seconds: HTTP request timeout in seconds.
+            auto_discover_subscribers: Automatically include all users/groups that pressed
+                START or added the bot via Telegram `getUpdates`.
         """
         self.bot_token = bot_token.strip()
-        self.chat_id = str(chat_id).strip()
         self.enabled = enabled
         self.timeout_seconds = float(timeout_seconds)
-        self.api_url = f"https://api.telegram.org/bot{self.bot_token}/sendPhoto"
-        self._active_threads: list[threading.Thread] = []
+        self.auto_discover_subscribers = auto_discover_subscribers
+
+        self.subscribers: Set[str] = set()
+        if isinstance(chat_id, (list, tuple, set)):
+            for cid in chat_id:
+                s = str(cid).strip()
+                if s and s != "YOUR_TELEGRAM_CHAT_ID":
+                    self.subscribers.add(s)
+        else:
+            for part in str(chat_id).split(","):
+                s = part.strip()
+                if s and s != "YOUR_TELEGRAM_CHAT_ID":
+                    self.subscribers.add(s)
+
+        self.send_photo_url = f"https://api.telegram.org/bot{self.bot_token}/sendPhoto"
+        self.get_updates_url = f"https://api.telegram.org/bot{self.bot_token}/getUpdates"
+        self._active_threads: List[threading.Thread] = []
 
     @property
     def is_configured(self) -> bool:
@@ -46,10 +68,31 @@ class TelegramNotifier:
         return (
             self.enabled
             and bool(self.bot_token)
-            and bool(self.chat_id)
             and self.bot_token != "YOUR_TELEGRAM_BOT_TOKEN"
-            and self.chat_id != "YOUR_TELEGRAM_CHAT_ID"
+            and (bool(self.subscribers) or self.auto_discover_subscribers)
         )
+
+    def refresh_subscribers(self) -> Set[str]:
+        """Discover any new users or groups that messaged/started the bot via getUpdates."""
+        if not self.auto_discover_subscribers or not self.bot_token:
+            return self.subscribers
+        try:
+            resp = requests.get(self.get_updates_url, timeout=5.0)
+            data = resp.json()
+            if data.get("ok") and data.get("result"):
+                for update in data["result"]:
+                    msg = (
+                        update.get("message")
+                        or update.get("edited_message")
+                        or update.get("channel_post")
+                        or update.get("my_chat_member", {})
+                    )
+                    chat = msg.get("chat")
+                    if chat and "id" in chat:
+                        self.subscribers.add(str(chat["id"]))
+        except requests.RequestException:
+            pass
+        return self.subscribers
 
     @staticmethod
     def format_html_caption(
@@ -60,19 +103,7 @@ class TelegramNotifier:
         low_light_active: bool = False,
         location_tag: Optional[str] = None,
     ) -> str:
-        """Format the alert metadata into an HTML caption for Telegram.
-
-        Args:
-            timestamp: Formatted timestamp string of the confirmed accident event.
-            num_motorcycles: Count of detected accident motorcycles (`motorcycle_accident`).
-            num_persons: Count of detected injured persons (`person_accident`).
-            max_confidence: Peak detection confidence score (0.0 - 1.0).
-            low_light_active: Whether adaptive low-light enhancement was applied.
-            location_tag: Optional camera or stream identifier.
-
-        Returns:
-            HTML-formatted string compatible with Telegram `parse_mode="HTML"`.
-        """
+        """Format the alert metadata into an HTML caption for Telegram."""
         safe_ts = html.escape(timestamp)
         lines = [
             "🚨 <b>MOTORCYCLE ACCIDENT DETECTED</b> 🚨",
@@ -92,7 +123,7 @@ class TelegramNotifier:
         image_bytes: bytes,
         caption: str,
     ) -> None:
-        """Worker executed in a background thread to perform the HTTP POST request."""
+        """Worker executed in a background thread to broadcast the alert to all subscribers."""
         if not self.is_configured:
             logger.warning(
                 "TelegramNotifier triggered, but credentials are not configured. "
@@ -100,26 +131,35 @@ class TelegramNotifier:
             )
             return
 
-        files = {
-            "photo": ("accident_snapshot.jpg", image_bytes, "image/jpeg"),
-        }
-        data = {
-            "chat_id": self.chat_id,
-            "caption": caption,
-            "parse_mode": "HTML",
-        }
+        target_chat_ids = set(self.refresh_subscribers())
+        if not target_chat_ids:
+            logger.warning("No Telegram subscribers found yet. Press START in the bot first.")
+            return
 
-        try:
-            response = requests.post(
-                self.api_url,
-                data=data,
-                files=files,
-                timeout=self.timeout_seconds,
-            )
-            response.raise_for_status()
-            logger.info("Telegram alert dispatched successfully (HTTP %d).", response.status_code)
-        except requests.RequestException as exc:
-            logger.error("Failed to send Telegram alert: %s", exc)
+        for cid in target_chat_ids:
+            files = {
+                "photo": ("accident_snapshot.jpg", image_bytes, "image/jpeg"),
+            }
+            data = {
+                "chat_id": cid,
+                "caption": caption,
+                "parse_mode": "HTML",
+            }
+            try:
+                response = requests.post(
+                    self.send_photo_url,
+                    data=data,
+                    files=files,
+                    timeout=self.timeout_seconds,
+                )
+                response.raise_for_status()
+                logger.info(
+                    "Telegram alert dispatched to chat_id=%s (HTTP %d).",
+                    cid,
+                    response.status_code,
+                )
+            except requests.RequestException as exc:
+                logger.error("Failed to send Telegram alert to chat_id=%s: %s", cid, exc)
 
     def send_accident_alert(
         self,
@@ -131,24 +171,10 @@ class TelegramNotifier:
         low_light_active: bool = False,
         location_tag: Optional[str] = None,
     ) -> Optional[threading.Thread]:
-        """Encode the annotated frame and asynchronously send a Telegram photo alert.
-
-        Args:
-            frame_bgr: Annotated BGR image to attach to the alert.
-            num_motorcycles: Number of accident motorcycles in the frame.
-            num_persons: Number of injured persons in the frame.
-            max_confidence: Highest detection confidence score among accident objects.
-            timestamp: Optional ISO/human-readable timestamp (defaults to current local time).
-            low_light_active: Whether the frame underwent low-light enhancement.
-            location_tag: Optional source identifier.
-
-        Returns:
-            The started `threading.Thread` instance, or None if encoding failed.
-        """
+        """Encode the annotated frame and asynchronously send a Telegram photo alert."""
         if timestamp is None:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Encode image in memory prior to spawning the thread so frame_bgr can be mutated safely
         success, encoded_img = cv2.imencode(
             ".jpg", frame_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 92]
         )
