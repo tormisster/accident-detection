@@ -80,7 +80,31 @@ class TelegramNotifier:
 
         self.send_photo_url = f"https://api.telegram.org/bot{self.bot_token}/sendPhoto"
         self.get_updates_url = f"https://api.telegram.org/bot{self.bot_token}/getUpdates"
+        self.subscribers_file = Path("logs/telegram_subscribers.txt")
+        self._load_persisted_subscribers()
         self._active_threads: List[threading.Thread] = []
+
+    def _load_persisted_subscribers(self) -> None:
+        """Load previously saved subscriber chat IDs from disk."""
+        if self.subscribers_file.exists():
+            try:
+                for line in self.subscribers_file.read_text(encoding="utf-8").splitlines():
+                    s = line.strip()
+                    if s:
+                        self.subscribers.add(s)
+            except OSError:
+                pass
+
+    def _save_persisted_subscribers(self) -> None:
+        """Persist all known subscriber chat IDs to disk so they never expire after 24h."""
+        try:
+            self.subscribers_file.parent.mkdir(parents=True, exist_ok=True)
+            self.subscribers_file.write_text(
+                "\n".join(sorted(self.subscribers)) + "\n",
+                encoding="utf-8",
+            )
+        except OSError:
+            pass
 
     @property
     def is_configured(self) -> bool:
@@ -110,6 +134,7 @@ class TelegramNotifier:
                     chat = msg.get("chat")
                     if chat and "id" in chat:
                         self.subscribers.add(str(chat["id"]))
+                self._save_persisted_subscribers()
         except requests.RequestException:
             pass
         return self.subscribers
